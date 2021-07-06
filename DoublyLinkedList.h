@@ -5,9 +5,11 @@
 #include <cmath>
 #include "llUtility.h"
 
-namespace Doubley {
+namespace Doubley
+{
 	template <typename T>
-	struct node {
+	struct node
+	{
 		T m_value{};
 		node* next{ nullptr };
 		node* prev{ nullptr };
@@ -19,10 +21,11 @@ class DoublyLinkedList
 {
 private:
 	Doubley::node<T>* startPointer{};
-	Doubley::node<T>* lastPointer{};
+	Doubley::node<T>* endPointer{};
 	Doubley::node<T>* currentPointer{};
 	int_fast64_t currentPos{ 0 };
 	int_fast64_t m_size{ 0 };
+	Doubley::node<T>* findLoc(int_fast64_t position) noexcept;
 public:
 	DoublyLinkedList() noexcept;
 	DoublyLinkedList(std::initializer_list<T> list) noexcept;
@@ -30,10 +33,11 @@ public:
 	~DoublyLinkedList() noexcept;
 	int_fast64_t length() noexcept;
 	T elementAt(int_fast64_t position);
-	void append(const T &value);
+	void append(const T& value);
 	void append(std::initializer_list<T> init_list);
 	void insert(const T& value, int_fast64_t position);
 	void merge(const DoublyLinkedList<T>& doublyLinkedList) noexcept;
+	void merge_move(const DoublyLinkedList<T>& doublyLinkedList) noexcept;
 	void removeAt(int_fast64_t position);
 	void removeValueFirst(const T& value) noexcept;
 	bool contains(const T& value) noexcept;
@@ -43,43 +47,52 @@ public:
 	T first() const;
 	T last() const;
 	bool isEmpty() const noexcept;
-	void clear();
+	void clear() noexcept;
 	std::string join(const std::string& seperator) const noexcept;
 	std::string toString() const noexcept;
 	bool operator==(DoublyLinkedList<T>& comparedList)const noexcept;
 };
 
 template <typename T>
-DoublyLinkedList<T>::DoublyLinkedList() noexcept{
+DoublyLinkedList<T>::DoublyLinkedList() noexcept
+{
 
 }
 
 template <typename T>
-DoublyLinkedList<T>::DoublyLinkedList(std::initializer_list<T> list) noexcept {
-	for (auto i : list) {
+DoublyLinkedList<T>::DoublyLinkedList(std::initializer_list<T> list) noexcept
+{
+	for (const auto& i : list)
+	{
 		this->append(i);
 	}
 }
 
 template <typename T>
-DoublyLinkedList<T>::DoublyLinkedList(int_fast64_t size) {
-	if (size < 0) {
+DoublyLinkedList<T>::DoublyLinkedList(int_fast64_t size)
+{
+	if (size < 0)
+	{
 		throw "DoublyLinkedList size cannot be negative number";
 	}
+	//same functionality could be achieved without tempPointer
 	Doubley::node<T>* tempPointer{};
-	for (int i{ 0 }; i < size; ++i) {
-		if (i == 0) {
+	for (int i{ 0 }; i < size; ++i)
+	{
+		if (i == 0)
+		{
 			Doubley::node<T>* newnode = new Doubley::node<T>();
 			startPointer = newnode;
-			lastPointer = newnode;
+			endPointer = newnode;
 			tempPointer = newnode;
 			++m_size;
 		}
-		else {
+		else
+		{
 			Doubley::node<T>* newnode = new Doubley::node<T>();
 			newnode->prev = tempPointer;
 			tempPointer->next = newnode;
-			lastPointer = newnode;
+			endPointer = newnode;
 			tempPointer = newnode;
 			++m_size;
 		}
@@ -87,103 +100,148 @@ DoublyLinkedList<T>::DoublyLinkedList(int_fast64_t size) {
 }
 
 template <typename T>
-DoublyLinkedList<T>::~DoublyLinkedList() noexcept {
+DoublyLinkedList<T>::~DoublyLinkedList() noexcept
+{
 	clear();
 }
 
 template <typename T>
-void DoublyLinkedList<T>::clear() {
+void DoublyLinkedList<T>::clear() noexcept
+{
 	Doubley::node<T>* tempPointer{ nullptr };
-	while (startPointer != nullptr) {
+	while (startPointer != nullptr)
+	{
 		tempPointer = startPointer;
 		startPointer = startPointer->next;
 		delete tempPointer;
 	}
 	startPointer = nullptr;
-	lastPointer = nullptr;
+	endPointer = nullptr;
 	m_size = 0;
 }
 
 template <typename T>
-int_fast64_t DoublyLinkedList<T>::length() noexcept {
+int_fast64_t DoublyLinkedList<T>::length() noexcept
+{
 	return m_size;
 }
 
-template <typename T>
-T DoublyLinkedList<T>::elementAt(int_fast64_t position) {
-	if (position > m_size || position < 0) {
-		throw "DoublyLinkedList cannot reach to this position";
-	}
-	if (std::abs(currentPos - position) < position) {
+
+template<typename T>
+Doubley::node<T>* DoublyLinkedList<T>::findLoc(int_fast64_t position) noexcept
+{
+	auto diff_c = std::abs(currentPos - position);
+	auto diff_s = position;
+	auto diff_e = std::abs(m_size - position);
+	if (diff_c < diff_s && diff_c < diff_e)
+	{
 		bool backward{ false };
-		if (currentPos > position) {
+		if (currentPos > position)
+		{
 			backward = true;
 		}
-		for (; backward ? currentPos > position : currentPos < position; backward ? --currentPos : ++currentPos) {
+		for (; backward ? currentPos > position : currentPos < position; backward ? --currentPos : ++currentPos)
+		{
 			currentPointer = backward ? currentPointer->prev : currentPointer->next;
-			
 		}
-		return currentPointer->m_value;
+		return currentPointer;
 	}
-	else {
+	else if (diff_e < diff_s)
+	{
+		//move from end
+		currentPointer = endPointer;
+		currentPos = m_size - 1;
+		for (; currentPos > position; --currentPos)
+		{
+			currentPointer = currentPointer->prev;
+		}
+		return currentPointer;
+	}
+	else
+	{
+		//move from start
 		currentPointer = startPointer;
 		currentPos = 0;
-		for (; currentPos < position; ++currentPos) {
+		for (; currentPos < position; ++currentPos)
+		{
 			currentPointer = currentPointer->next;
 		}
-		return currentPointer->m_value;
+		return currentPointer;
 	}
 }
 
 template <typename T>
-void DoublyLinkedList<T>::append(const T& value) {
-	if (m_size == INT_FAST64_MAX) {
+T DoublyLinkedList<T>::elementAt(int_fast64_t position)
+{
+	if (position >= m_size || position < 0)
+	{
+		throw "DoublyLinkedList cannot reach to this position";
+	}
+
+	return findLoc(position)->m_value;
+}
+
+template <typename T>
+void DoublyLinkedList<T>::append(const T& value)
+{
+	if (m_size == INT_FAST64_MAX)
+	{
 		throw "maximum size has been reached already";
 		return;
 	}
-	if (m_size == 0) {
+	if (m_size == 0)
+	{
 		Doubley::node<T>* newnode = new Doubley::node<T>();
 		newnode->m_value = value;
 		startPointer = newnode;
-		lastPointer = newnode;
+		endPointer = newnode;
 		++m_size;
 	}
-	else {
+	else
+	{
 		Doubley::node<T>* newnode = new Doubley::node<T>();
 		newnode->m_value = value;
-		lastPointer->next = newnode;
-		newnode->prev = lastPointer;
-		lastPointer = newnode;
+		endPointer->next = newnode;
+		newnode->prev = endPointer;
+		endPointer = newnode;
 		++m_size;
 	}
 }
 
 template <typename T>
-void DoublyLinkedList<T>::append(std::initializer_list<T> init_list) {
-	if (static_cast<int_fast64_t>((m_size + init_list.size())) < m_size) {
+void DoublyLinkedList<T>::append(std::initializer_list<T> init_list)
+{
+	if (static_cast<int_fast64_t>((m_size + init_list.size())) < m_size)
+	{
 		throw "maximum size will be exceded process stopped.";
 		return;
 	}
-	for (auto i : init_list) {
+	for (auto i : init_list)
+	{
 		this->append(i);
 	}
 }
 
 template <typename T>
-void DoublyLinkedList<T>::insert(const T& value, int_fast64_t position) {
-	if (position > m_size || position < 0) {
+void DoublyLinkedList<T>::insert(const T& value, int_fast64_t position)
+{
+	if (position > m_size || position < 0)
+	{
 		throw "unexcepted position";
 	}
-	if (m_size == INT_FAST64_MAX) {
+	if (m_size == INT_FAST64_MAX)
+	{
 		throw "maximum size has been reached already";
 	}
 
-	if (position == m_size) {
+	if (position == m_size)
+	{
 		this->append(value);
 		return;
 	}
 
-	if (position == 0) {
+	if (position == 0)
+	{
 		Doubley::node<T>* newnode = new Doubley::node<T>();
 		newnode->m_value = value;
 		startPointer->prev = newnode;
@@ -193,27 +251,7 @@ void DoublyLinkedList<T>::insert(const T& value, int_fast64_t position) {
 		return;
 	}
 
-	std::cout << "searching.." << std::endl;
-	if (std::abs(currentPos - position) < position) {
-		bool backward{ false };
-		if (currentPos > position) {
-			backward = true;
-		}
-		for (; backward ? currentPos > position : currentPos < position; backward ? --currentPos : ++currentPos) {
-			currentPointer = backward ? currentPointer->prev : currentPointer->next;
-			std::cout << currentPos << " " << std::endl;
-		}
-		std::cout << "search ended" << std::endl;
-	}
-	else {
-		currentPointer = startPointer;
-		currentPos = 0;
-		for (; currentPos < position; ++currentPos) {
-			currentPointer = currentPointer->next;
-			std::cout << currentPos << " " << std::endl;
-		}
-		std::cout << "search ended" << std::endl;
-	}
+	findLoc(position);
 
 	Doubley::node<T>* newnode = new Doubley::node<T>();
 	newnode->m_value = value;
@@ -227,75 +265,118 @@ void DoublyLinkedList<T>::insert(const T& value, int_fast64_t position) {
 }
 
 template <typename T>
-void DoublyLinkedList<T>::merge(const DoublyLinkedList<T>& doublyLinkedList) noexcept {
+void DoublyLinkedList<T>::merge(const DoublyLinkedList<T>& doublyLinkedList) noexcept
+{
 	Doubley::node<T>* tempPointer{ doublyLinkedList.startPointer };
-	for (auto i{ 0 }; i < doublyLinkedList.m_size; ++i) {
+	for (auto i{ 0 }; i < doublyLinkedList.m_size; ++i)
+	{
 		this->append(tempPointer->m_value);
 		tempPointer = tempPointer->next;
 	}
 }
 
 template <typename T>
-T  DoublyLinkedList<T>::first() const {
-	if (m_size > 0) {
+void DoublyLinkedList<T>::merge_move(const DoublyLinkedList<T>& doublyLinkedList) noexcept
+{
+	if (doublyLinkedList.m_size == 0)
+	{
+		return;
+	}
+	else if (static_cast<int_fast64_t>((m_size + doublyLinkedList.m_size)) < m_size)
+	{
+		throw "merge exceeds size";
+		return;
+	}
+	this->endPointer->next = doublyLinkedList.startPointer;
+	this->endPointer = doublyLinkedList.endPointer;
+	this->m_size += doublyLinkedList.m_size;
+	doublyLinkedList.startPointer = nullptr;
+	doublyLinkedList.endPointer = nullptr;
+	doublyLinkedList.m_size = 0;
+}
+
+template <typename T>
+T  DoublyLinkedList<T>::first() const
+{
+	if (m_size > 0)
+	{
 		return startPointer->m_value;
-	}else {
+	}
+	else
+	{
 		throw "empty";
 	}
 }
 
 template <typename T>
-T  DoublyLinkedList<T>::last() const {
-	if (m_size > 0) {
-		return lastPointer->m_value;
+T  DoublyLinkedList<T>::last() const
+{
+	if (m_size > 0)
+	{
+		return endPointer->m_value;
 	}
-	else {
+	else
+	{
 		throw "empty";
 	}
 }
 
 template <typename T>
-bool DoublyLinkedList<T>::isEmpty() const noexcept {
+bool DoublyLinkedList<T>::isEmpty() const noexcept
+{
 	return m_size > 0 ? false : true;
 }
 
 template <typename T>
-void DoublyLinkedList<T>::pop() {
-	if (m_size == 0) {
+void DoublyLinkedList<T>::pop()
+{
+	if (m_size == 0)
+	{
 		throw "cannot pop DoublyLinkedList size is 0\n";
 	}
-	if (m_size == 1) {
-		delete lastPointer;
-		lastPointer = nullptr;
+	if (m_size == 1)
+	{
+		delete endPointer;
+		endPointer = nullptr;
 		startPointer = nullptr;
 		currentPointer = nullptr;
 		currentPos = 0;
 		--m_size;
 		return;
 	}
-	if (currentPointer == lastPointer) {
-		currentPointer = lastPointer->prev;
+	if (currentPointer == endPointer)
+	{
+		currentPointer = startPointer;
+		currentPos = 0;
 	}
-	Doubley::node<T>* tempPointer{ lastPointer };
-	lastPointer = lastPointer->prev;
-	lastPointer->next = nullptr;
+	Doubley::node<T>* tempPointer{ endPointer };
+	endPointer = endPointer->prev;
+	endPointer->next = nullptr;
 	--m_size;
 	delete tempPointer;
 }
 
 template <typename T>
-void DoublyLinkedList<T>::removeAt(int_fast64_t position) {
-	if (position < 0 || position > m_size - 1) {
+void DoublyLinkedList<T>::removeAt(int_fast64_t position)
+{
+	if (position < 0 || position > m_size - 1)
+	{
 		throw "cannot remove DoublyLinkedList position is not suitable";
 	}
 
-	if (position == m_size - 1) {
+	if (position == m_size - 1 || m_size == 1)
+	{
 		this->pop();
 		return;
 	}
 
-	if (position == 0) {
-		std::cout << "deleting" << m_size << std::endl;
+	if (position == 0)
+	{
+		if (currentPointer == startPointer)
+		{
+			currentPointer = endPointer;
+			currentPos = m_size - 2;
+		}
 		Doubley::node<T>* tempPointer{ startPointer };
 		startPointer = startPointer->next;
 		startPointer->prev = nullptr;
@@ -304,29 +385,8 @@ void DoublyLinkedList<T>::removeAt(int_fast64_t position) {
 		return;
 	}
 
+	findLoc(position);
 
-	std::cout << "searching.." << std::endl;
-	if (std::abs(currentPos - position) < position) {
-		bool backward{ false };
-		if (currentPos > position) {
-			backward = true;
-		}
-		for (; backward ? currentPos > position : currentPos < position; backward ? --currentPos : ++currentPos) {
-			currentPointer = backward ? currentPointer->prev : currentPointer->next;
-			std::cout << currentPos << " " << std::endl;
-		}
-		std::cout << "search ended" << std::endl;
-	}
-	else {
-		currentPointer = startPointer;
-		currentPos = 0;
-		for (; currentPos < position; ++currentPos) {
-			currentPointer = currentPointer->next;
-			std::cout << currentPos << " " << std::endl;
-		}
-		std::cout << "search ended" << std::endl;
-	}
-	
 	Doubley::node<T>* tempPointer{ currentPointer };
 	currentPointer->prev->next = currentPointer->next;
 	currentPointer->next->prev = currentPointer->prev;
@@ -338,10 +398,13 @@ void DoublyLinkedList<T>::removeAt(int_fast64_t position) {
 }
 
 template <typename T>
-void DoublyLinkedList<T>::removeValueFirst(const T& value) noexcept {
+void DoublyLinkedList<T>::removeValueFirst(const T& value) noexcept
+{
 	Doubley::node<T>* tempPointer{ startPointer };
-	for (auto i{ 0 }; i < m_size; ++i) {
-		if (tempPointer->m_value == value) {
+	for (auto i{ 0 }; i < m_size; ++i)
+	{
+		if (tempPointer->m_value == value)
+		{
 			this->removeAt(i);
 			return;
 		}
@@ -350,10 +413,13 @@ void DoublyLinkedList<T>::removeValueFirst(const T& value) noexcept {
 }
 
 template <typename T>
-bool DoublyLinkedList<T>::contains(const T& value) noexcept {
+bool DoublyLinkedList<T>::contains(const T& value) noexcept
+{
 	Doubley::node<T>* tempPointer{ startPointer };
-	for (auto i{ 0 }; i < m_size; ++i) {
-		if (tempPointer->m_value == value) {
+	for (auto i{ 0 }; i < m_size; ++i)
+	{
+		if (tempPointer->m_value == value)
+		{
 			return true;
 		}
 		tempPointer = tempPointer->next;
@@ -362,10 +428,13 @@ bool DoublyLinkedList<T>::contains(const T& value) noexcept {
 }
 
 template <typename T>
-bool DoublyLinkedList<T>::every(std::function<bool(const T& element)> test) const noexcept{
+bool DoublyLinkedList<T>::every(std::function<bool(const T& element)> test) const noexcept
+{
 	Doubley::node<T>* tempPointer{ startPointer };
-	for (auto i{ 0 }; i < m_size; ++i) {
-		if (!test(tempPointer->m_value)) {
+	for (auto i{ 0 }; i < m_size; ++i)
+	{
+		if (!test(tempPointer->m_value))
+		{
 			return false;
 		}
 		tempPointer = tempPointer->next;
@@ -374,25 +443,31 @@ bool DoublyLinkedList<T>::every(std::function<bool(const T& element)> test) cons
 }
 
 template <typename T>
-void DoublyLinkedList<T>::forEach(std::function<void(T& element)> function) noexcept {
+void DoublyLinkedList<T>::forEach(std::function<void(T& element)> function) noexcept
+{
 	Doubley::node<T>* tempPointer{ startPointer };
-	for (auto i{ 0 }; i < m_size; ++i) {
+	for (auto i{ 0 }; i < m_size; ++i)
+	{
 		function(tempPointer->m_value);
 		tempPointer = tempPointer->next;
 	}
 }
 
 template <typename T>
-std::string DoublyLinkedList<T>::join(const std::string& seperator) const noexcept {
+std::string DoublyLinkedList<T>::join(const std::string& seperator) const noexcept
+{
 	std::string result{};
-	if (m_size == 0) {
+	if (m_size == 0)
+	{
 		result = "-";
 		return result;
 	}
-	else {
+	else
+	{
 		result.reserve(m_size * 4);
 		Doubley::node<T>* tempPointer = startPointer;
-		for (auto i{ 0 }; i < m_size; ++i) {
+		for (auto i{ 0 }; i < m_size; ++i)
+		{
 			result.append(llUtility::to_string(tempPointer->m_value) + seperator);
 			tempPointer = tempPointer->next;
 		}
@@ -401,16 +476,20 @@ std::string DoublyLinkedList<T>::join(const std::string& seperator) const noexce
 }
 
 template <typename T>
-std::string DoublyLinkedList<T>::toString() const noexcept {
+std::string DoublyLinkedList<T>::toString() const noexcept
+{
 	std::string result{};
-	if (m_size == 0) {
+	if (m_size == 0)
+	{
 		result = "-";
 		return result;
 	}
-	else {
+	else
+	{
 		result.reserve(m_size * 4);
 		Doubley::node<T>* tempPointer = startPointer;
-		for (auto i{ 0 }; i < m_size; ++i) {
+		for (auto i{ 0 }; i < m_size; ++i)
+		{
 			result.append(llUtility::to_string(tempPointer->m_value) + "->");
 			tempPointer = tempPointer->next;
 		}
@@ -420,12 +499,16 @@ std::string DoublyLinkedList<T>::toString() const noexcept {
 
 
 template <typename T>
-bool DoublyLinkedList<T>::operator==(DoublyLinkedList<T>& comparedList)const noexcept {
-	if (this->m_size == comparedList.m_size) {
+bool DoublyLinkedList<T>::operator==(DoublyLinkedList<T>& comparedList)const noexcept
+{
+	if (this->m_size == comparedList.m_size)
+	{
 		Doubley::node<T>* tempPointer1{ this->startPointer };
 		Doubley::node<T>* tempPointer2{ comparedList.startPointer };
-		for (auto i{ 0 }; i < m_size; ++i) {
-			if (tempPointer1->m_value != tempPointer2->m_value) {
+		for (auto i{ 0 }; i < m_size; ++i)
+		{
+			if (tempPointer1->m_value != tempPointer2->m_value)
+			{
 				return false;
 			}
 			tempPointer1 = tempPointer1->next;
@@ -433,7 +516,8 @@ bool DoublyLinkedList<T>::operator==(DoublyLinkedList<T>& comparedList)const noe
 		}
 		return true;
 	}
-	else {
+	else
+	{
 		return false;
 	}
 }
